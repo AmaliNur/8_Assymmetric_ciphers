@@ -35,3 +35,4 @@ with socket.socket() as sock:
     encrypted_response = pickle.loads(sock.recv(1024))
     response = ''.join([chr(pow(char, K, p)) for char in encrypted_response])
     print("Ответ от сервера:", response)
+
