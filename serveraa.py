@@ -1,13 +1,12 @@
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
 import socket
-from key_manager import load_keys, serialize_public_key, deserialize_public_key
+import pickle
+from crypto_utils import generate_rsa_keys, serialize_public_key, deserialize_public_key, rsa_encrypt, rsa_decrypt
 
 HOST = '127.0.0.1'
 PORT = 8080
 
-# Загрузка ключей
-public_key, private_key = load_keys()
+# Генерируем ключи сервера
+public_key, private_key = generate_rsa_keys()
 
 with socket.socket() as sock:
     sock.bind((HOST, PORT))
@@ -23,10 +22,10 @@ with socket.socket() as sock:
 
     # Принимаем зашифрованное сообщение
     encrypted_message = conn.recv(1024)
-    message = private_key.decrypt(encrypted_message, padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None)).decode()
+    message = rsa_decrypt(encrypted_message, private_key)
     print("Получено сообщение:", message)
 
     # Отправляем ответ
     response = "Привет, клиент!"
-    encrypted_response = client_public_key.encrypt(response.encode(), padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
+    encrypted_response = rsa_encrypt(response, client_public_key)
     conn.send(encrypted_response)
