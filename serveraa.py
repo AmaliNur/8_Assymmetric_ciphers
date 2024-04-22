@@ -1,12 +1,15 @@
 import socket
 import pickle
-from crypto_utils import generate_rsa_keys, serialize_public_key, deserialize_public_key, rsa_encrypt, rsa_decrypt
+from crypto_utils import load_keys, deserialize_public_key, rsa_decrypt
+
+# Загрузка ключей
+public_key, private_key = load_keys()
+
+def check_client_key(client_key):
+    return client_key == public_key
 
 HOST = '127.0.0.1'
 PORT = 8080
-
-# Генерируем ключи сервера
-public_key, private_key = generate_rsa_keys()
 
 with socket.socket() as sock:
     sock.bind((HOST, PORT))
@@ -17,15 +20,18 @@ with socket.socket() as sock:
     msg = conn.recv(1024)
     client_public_key = deserialize_public_key(msg)
 
-    # Отправляем открытый ключ сервера
-    conn.send(serialize_public_key(public_key))
+    # Проверяем ключ клиента
+    if not check_client_key(client_public_key):
+        print("Недопустимый ключ клиента. Разрыв соединения.")
+        conn.close()
+    else:
+        print("Ключ клиента допустим. Продолжаем соединение.")
 
-    # Принимаем зашифрованное сообщение
-    encrypted_message = conn.recv(1024)
-    message = rsa_decrypt(encrypted_message, private_key)
-    print("Получено сообщение:", message)
+        # Принимаем зашифрованное сообщение
+        encrypted_message = conn.recv(1024)
+        message = rsa_decrypt(encrypted_message, private_key)
+        print("Получено сообщение:", message)
 
-    # Отправляем ответ
-    response = "Привет, клиент!"
-    encrypted_response = rsa_encrypt(response, client_public_key)
-    conn.send(encrypted_response)
+        # Отправляем ответ
+        response = "Привет, клиент!"
+        conn.send(response.encode())
