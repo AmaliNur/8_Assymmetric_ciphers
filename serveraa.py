@@ -9,12 +9,13 @@ def check_client_key(client_key):
     return client_key == public_key
 
 HOST = '127.0.0.1'
-PORT = 8080
+PORT_KEY_EXCHANGE = 8080
+PORT_COMMUNICATION = 8081
 
-with socket.socket() as sock:
-    sock.bind((HOST, PORT))
-    sock.listen(1)
-    conn, addr = sock.accept()
+with socket.socket() as key_exchange_sock:
+    key_exchange_sock.bind((HOST, PORT_KEY_EXCHANGE))
+    key_exchange_sock.listen(1)
+    conn, addr = key_exchange_sock.accept()
 
     # Принимаем открытый ключ клиента
     msg = conn.recv(1024)
@@ -27,11 +28,21 @@ with socket.socket() as sock:
     else:
         print("Ключ клиента допустим. Продолжаем соединение.")
 
-        # Принимаем зашифрованное сообщение
-        encrypted_message = conn.recv(1024)
-        message = rsa_decrypt(encrypted_message, private_key)
-        print("Получено сообщение:", message)
+        # Принимаем зашифрованный порт
+        encrypted_port = conn.recv(1024)
+        port = int(rsa_decrypt(encrypted_port, private_key))
 
-        # Отправляем ответ
-        response = "Привет, клиент!"
-        conn.send(response.encode())
+# Теперь слушаем соединения на порту для основного общения
+with socket.socket() as communication_sock:
+    communication_sock.bind((HOST, port))
+    communication_sock.listen(1)
+    conn, addr = communication_sock.accept()
+
+    # Принимаем зашифрованное сообщение
+    encrypted_message = conn.recv(1024)
+    message = rsa_decrypt(encrypted_message, private_key)
+    print("Получено сообщение:", message)
+
+    # Отправляем ответ
+    response = "Привет, клиент!"
+    conn.send(response.encode())
